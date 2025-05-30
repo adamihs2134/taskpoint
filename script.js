@@ -501,27 +501,49 @@ luxuryForm.addEventListener('submit', e => {
 function renderTaskList() {
   const ongoing = $('task-list-ongoing');
   const past = $('task-list-past');
+  // 新規追加：これからのタスク用リスト
+  let upcoming = $('task-list-upcoming');
+  if (!upcoming) {
+    upcoming = document.createElement('ul');
+    upcoming.id = 'task-list-upcoming';
+    // 既に見出しがなければ追加
+    const section = document.getElementById('tab-task-list');
+    if (section && !document.getElementById('upcoming-title')) {
+      const title = document.createElement('h3');
+      title.textContent = 'これからのタスク';
+      title.id = 'upcoming-title';
+      section.insertBefore(title, section.firstChild);
+      section.insertBefore(upcoming, title.nextSibling);
+    }
+  }
   ongoing.innerHTML = '';
   past.innerHTML = '';
+  upcoming.innerHTML = '';
   const todayStr = (new Date()).toISOString().slice(0, 10);
 
   tasks.forEach((task, idx) => {
-    // まだ開始前の日付ならスキップ
-    if (task.date > todayStr) return;
     const li = document.createElement('li');
+    // これからのタスク（明日以降開始）
+    if (task.date > todayStr) {
+      li.innerHTML = `<strong>${task.name}</strong> ${task.point}pt<br>
+        開始日時: ${task.date}<br>
+        繰り返し頻度: ${getRepeatLabel(task)}`;
+      upcoming.appendChild(li);
+      return;
+    }
     // 継続中か過去か判定
     let isPast = false;
     if (!task.repeat && task.date < todayStr) isPast = true;
     if (task.repeat && task.lastDoneDate && task.lastDoneDate < todayStr) isPast = true;
 
     if (!isPast) {
-      // 継続中のタスク：開始日時・繰り返し頻度を改行で
+      // 継続中のタスク
       li.innerHTML = `<strong>${task.name}</strong> ${task.point}pt<br>
         開始日時: ${task.date}<br>
         繰り返し頻度: ${getRepeatLabel(task)}`;
       ongoing.appendChild(li);
     } else {
-      // 過去のタスクは従来通り
+      // 過去のタスク
       li.innerHTML = `<strong>${task.name}</strong> ${task.point}pt<br>日付: ${task.date} / 繰り返し: ${getRepeatLabel(task)}`;
       past.appendChild(li);
     }
