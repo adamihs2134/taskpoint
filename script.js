@@ -1,0 +1,625 @@
+// --- 初期データロード ---
+let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+let luxuryItems = JSON.parse(localStorage.getItem('luxuryItems')) || [];
+let pointHistory = JSON.parse(localStorage.getItem('pointHistory')) || [];
+let pointTotal = parseInt(localStorage.getItem('pointTotal')) || 0;
+let luxuryPoint = parseInt(localStorage.getItem('luxuryPoint')) || 0;
+let currentDate = new Date();
+
+// --- DOM要素取得 ---
+const $ = id => document.getElementById(id);
+const todayTaskList = $('today-task-list');
+const taskForm = $('task-form');
+const taskInput = $('task-input');
+const pointInput = $('point-input');
+const dateInput = $('date-input');
+const repeatInput = $('repeat-input');
+const repeatType = $('repeat-type');
+const repeatInterval = $('repeat-interval');
+const pointTotalElem = $('point-total');
+const luxuryPointElem = $('luxury-point');
+const calendarDiv = $('calendar');
+const luxuryItemsList = $('luxury-items');
+const luxuryForm = $('luxuryForm');
+const luxuryItemNameInput = $('luxury-item-name');
+const luxuryItemCostInput = $('luxury-item-cost');
+const pointHistoryList = $('point-history-list');
+const exchangeButton = $('exchange-button');
+const tabs = document.querySelectorAll('.tab');
+const tabContents = document.querySelectorAll('.tab-content');
+
+// --- タブ切り替え ---
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabs.forEach(t => t.classList.remove('active'));
+    tabContents.forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    $(tab.dataset.tab).classList.add('active');
+  });
+});
+
+// --- サブタブ切り替え ---
+document.querySelectorAll('.subtab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.subtab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.history-list').forEach(list => list.style.display = 'none');
+    $(btn.dataset.subtab).style.display = '';
+  });
+});
+
+// --- 保存処理 ---
+function saveAll() {
+  localStorage.setItem('tasks', JSON.stringify(tasks));
+  localStorage.setItem('luxuryItems', JSON.stringify(luxuryItems));
+  localStorage.setItem('pointHistory', JSON.stringify(pointHistory));
+  localStorage.setItem('pointTotal', pointTotal);
+  localStorage.setItem('luxuryPoint', luxuryPoint);
+  renderTaskList();
+  updatePointHistory();
+}
+
+// --- ポイント表示更新 ---
+function updatePoints() {
+  pointTotalElem.textContent = pointTotal;
+  luxuryPointElem.textContent = luxuryPoint;
+  // 常に黒
+  luxuryPointElem.style.background = 'none';
+  luxuryPointElem.style.backgroundClip = 'border-box';
+  luxuryPointElem.style.webkitBackgroundClip = 'border-box';
+  luxuryPointElem.style.webkitTextFillColor = '#000';
+  luxuryPointElem.style.color = '#000';
+  luxuryPointElem.style.fontWeight = 'bold';
+  luxuryPointElem.style.animation = '';
+}
+
+// --- パチンコ風カラー ---
+function getPachinkoColor(val) {
+  if (val >= 100) return 'linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet)';
+  if (val >= 80) return '#FFD700';
+  if (val >= 60) return '#e53935';
+  if (val >= 40) return '#43a047';
+  if (val >= 20) return '#1e88e5';
+  return '#111';
+}
+
+// --- 今日のタスク表示 ---
+function updateTodayTasks() {
+  todayTaskList.innerHTML = '';
+  const todayStr = (new Date()).toISOString().slice(0, 10);
+  tasks.forEach((task, idx) => {
+    if (isTaskForToday(task, todayStr)) {
+      const alreadyDoneToday = task.lastDoneDate === todayStr;
+      const li = document.createElement('li');
+      li.style.display = 'flex';
+      li.style.alignItems = 'center';
+
+      // チェックボックス
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = !!task.doneToday;
+      checkbox.disabled = alreadyDoneToday;
+      checkbox.className = 'task-checkbox';
+
+      // タスク名（左詰め）
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = task.name;
+      nameSpan.className = 'task-name';
+      nameSpan.style.flex = '1';
+      nameSpan.style.textAlign = 'left';
+      if (task.doneToday) nameSpan.classList.add('done');
+
+      // 右側ラッパー
+      const rightWrapper = document.createElement('span');
+      rightWrapper.style.display = 'flex';
+      rightWrapper.style.alignItems = 'center';
+      rightWrapper.style.marginLeft = 'auto';
+
+      // ポイント
+      const pointSpan = document.createElement('span');
+      pointSpan.textContent = `${task.point}pt`;
+      pointSpan.className = 'task-point';
+
+      // 三点リーダー
+      const menuButton = document.createElement('button');
+      menuButton.textContent = '︙';
+      menuButton.className = 'menu-btn';
+
+      // メニュー
+      const menu = createMenu({
+        menuClass: 'task-menu',
+        onEdit: e => {
+          e.stopPropagation();
+          if (alreadyDoneToday) {
+            menu.style.display = 'none';
+            alert('完了したタスクは編集できません');
+            return;
+          }
+          menu.style.display = 'none';
+          taskInput.value = task.name;
+          pointInput.value = task.point;
+          dateInput.value = task.date;
+          repeatInput.checked = task.repeat;
+          tasks.splice(idx, 1);
+          saveAll();
+          updateTodayTasks();
+          renderCalendar();
+          tabs.forEach(t => t.classList.remove('active'));
+          tabContents.forEach(c => c.classList.remove('active'));
+          document.querySelector('[data-tab="tab-task-add"]').classList.add('active');
+          $('tab-task-add').classList.add('active');
+        },
+        onDelete: e => {
+          e.stopPropagation();
+          menu.style.display = 'none';
+          if(confirm(`タスク「${task.name}」を削除しますか？`)){
+            tasks.splice(idx, 1);
+            saveAll();
+            updateTodayTasks();
+            renderCalendar();
+          }
+        }
+      });
+      menuButton.addEventListener('click', e => {
+        e.stopPropagation();
+        document.querySelectorAll('.context-menu').forEach(m => { if(m!==menu) m.style.display='none'; });
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+      });
+      document.addEventListener('click', () => { menu.style.display = 'none'; });
+
+      rightWrapper.append(pointSpan, menuButton, menu);
+      li.append(checkbox, nameSpan, rightWrapper);
+      todayTaskList.appendChild(li);
+
+      // チェック切替
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked && !task.doneToday && !alreadyDoneToday) {
+          task.doneToday = true;
+          task.lastDoneDate = todayStr;
+          pointTotal += task.point;
+          pointHistory.push({
+            type: '獲得',
+            detail: `タスク「${task.name}」達成`,
+            amount: task.point,
+            date: new Date().toISOString(),
+          });
+          updatePoints();
+          saveAll();
+          updateTodayTasks();
+        } else if (!checkbox.checked && task.doneToday && !alreadyDoneToday) {
+          task.doneToday = false;
+          task.lastDoneDate = null;
+          pointTotal -= task.point;
+          pointHistory.push({
+            type: '取消',
+            detail: `タスク「${task.name}」完了取消`,
+            amount: -task.point,
+            date: new Date().toISOString(),
+          });
+          updatePoints();
+          saveAll();
+          updateTodayTasks();
+        }
+      });
+    }
+  });
+}
+
+// --- カレンダー ---
+function updateCalendar() {
+  const month = currentDate.getMonth();
+  const year = currentDate.getFullYear();
+  $("current-month").textContent = `${year}年${month + 1}月`;
+  renderCalendar(year, month);
+}
+$("prev-month").addEventListener("click", () => {
+  currentDate.setMonth(currentDate.getMonth() - 1);
+  updateCalendar();
+});
+$("next-month").addEventListener("click", () => {
+  currentDate.setMonth(currentDate.getMonth() + 1);
+  updateCalendar();
+});
+function renderCalendar(year = currentDate.getFullYear(), month = currentDate.getMonth()) {
+  calendarDiv.innerHTML = '';
+  const daysOfWeek = ['日','月','火','水','木','金','土'];
+  daysOfWeek.forEach(d => {
+    const div = document.createElement('div');
+    div.textContent = d;
+    div.style.fontWeight = 'bold';
+    div.style.backgroundColor = '#c8e6c9';
+    calendarDiv.appendChild(div);
+  });
+  const firstDay = new Date(year, month, 1);
+  const startDay = firstDay.getDay();
+  const lastDay = new Date(year, month + 1, 0);
+  const daysInMonth = lastDay.getDate();
+  for(let i=0; i<startDay; i++){
+    calendarDiv.appendChild(document.createElement('div'));
+  }
+  for(let day=1; day<=daysInMonth; day++){
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const div = document.createElement('div');
+    div.textContent = day;
+    if (dateStr === (new Date()).toISOString().slice(0,10)) div.classList.add('today');
+    div.addEventListener('click', () => {
+      dateInput.value = dateStr;
+      tabs.forEach(t => t.classList.remove('active'));
+      tabContents.forEach(c => c.classList.remove('active'));
+      document.querySelector('[data-tab="tab-task-add"]').classList.add('active');
+      $('tab-task-add').classList.add('active');
+    });
+    calendarDiv.appendChild(div);
+  }
+}
+
+// --- タスク追加 ---
+repeatType.addEventListener('change', () => {
+  // repeat-intervalの表示切替
+  if (repeatType.value === 'interval') {
+    repeatInterval.style.display = 'block';
+  } else {
+    repeatInterval.style.display = 'none';
+  }
+});
+
+taskForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const name = taskInput.value.trim();
+  const point = parseInt(pointInput.value);
+  const date = dateInput.value;
+  let repeat = repeatType.value !== 'none';
+  let repeatTypeVal = repeatType.value;
+  let repeatIntervalVal = repeatType.value === 'interval' ? parseInt(repeatInterval.value) : null;
+  if (!name || !point || !date) return alert('全て入力してください');
+  if (repeatTypeVal === 'interval' && (!repeatIntervalVal || repeatIntervalVal < 1)) {
+    return alert('n日間隔を正しく入力してください');
+  }
+  tasks.push({
+    name, point, date, repeat,
+    repeatType: repeatTypeVal,
+    repeatInterval: repeatIntervalVal,
+    doneToday: false,
+    lastDoneDate: null
+  });
+  taskInput.value = '';
+  pointInput.value = '';
+  dateInput.value = '';
+  repeatType.value = 'none';
+  repeatInterval.value = '';
+  repeatInterval.style.display = 'none';
+  saveAll();
+  updateTodayTasks();
+  renderCalendar();
+  renderTaskList();
+});
+
+// --- キャンセルボタン ---
+$('task-cancel-btn').addEventListener('click', () => {
+  taskInput.value = '';
+  pointInput.value = '';
+  dateInput.value = '';
+  repeatInput.checked = false;
+});
+
+// --- メニュー生成 ---
+function createMenu({ onEdit, onDelete, menuClass = '' }) {
+  const menu = document.createElement('div');
+  menu.className = menuClass + ' context-menu';
+  menu.style.display = 'none';
+  menu.style.position = 'absolute';
+  menu.style.right = '0';
+  menu.style.top = '100%';
+  menu.style.backgroundColor = '#fff';
+  menu.style.border = '1px solid #ccc';
+  menu.style.padding = '0';
+  menu.style.zIndex = '100';
+  menu.style.minWidth = '80px';
+  menu.style.flexDirection = 'column';
+  const editBtn = document.createElement('div');
+  editBtn.textContent = '編集';
+  editBtn.className = 'menu-edit';
+  editBtn.addEventListener('click', onEdit);
+  const deleteBtn = document.createElement('div');
+  deleteBtn.textContent = '削除';
+  deleteBtn.className = 'menu-delete';
+  deleteBtn.addEventListener('click', onDelete);
+  menu.append(editBtn, deleteBtn);
+  return menu;
+}
+
+// --- 贅沢アイテム表示 ---
+function updateLuxuryItems() {
+  luxuryItemsList.innerHTML = '';
+  [...luxuryItems].sort((a, b) => a.cost - b.cost).forEach((item, idx) => {
+    const li = document.createElement('li');
+    li.style.display = 'flex';
+    li.style.alignItems = 'center';
+    li.style.padding = '12px 8px';
+    li.style.borderBottom = '1px solid #eee';
+    li.style.background = idx % 2 === 0 ? '#fafafa' : '#fff';
+    // アイテム名
+    const leftSpan = document.createElement('span');
+    leftSpan.textContent = item.name;
+    leftSpan.style.flex = '1';
+    leftSpan.style.fontWeight = 'bold';
+    leftSpan.style.fontSize = '1.1em';
+    leftSpan.style.overflow = 'hidden';
+    leftSpan.style.textOverflow = 'ellipsis';
+    leftSpan.style.whiteSpace = 'nowrap';
+    // 必要ポイント
+    const pointSpan = document.createElement('span');
+    pointSpan.textContent = `${item.cost}pt`;
+    pointSpan.className = 'luxury-cost-badge';
+    pointSpan.style.marginLeft = '16px';
+    pointSpan.style.marginRight = '8px';
+    pointSpan.style.fontSize = '1.1em';
+    pointSpan.style.fontWeight = 'bold';
+    pointSpan.style.padding = '4px 14px';
+    pointSpan.style.borderRadius = '16px';
+    pointSpan.style.minWidth = '60px';
+    pointSpan.style.textAlign = 'center';
+    // 色付け
+    const color = getPachinkoColor(item.cost);
+    if (item.cost >= 100) {
+      pointSpan.style.background = color;
+      pointSpan.style.backgroundClip = 'text';
+      pointSpan.style.webkitBackgroundClip = 'text';
+      pointSpan.style.webkitTextFillColor = 'transparent';
+      pointSpan.style.color = '#FFD700';
+      pointSpan.style.animation = 'rainbow-glow 1.5s linear infinite';
+      pointSpan.style.border = 'none';
+    } else {
+      pointSpan.style.background = '#fff';
+      pointSpan.style.backgroundClip = 'border-box';
+      pointSpan.style.webkitBackgroundClip = 'border-box';
+      pointSpan.style.webkitTextFillColor = color;
+      pointSpan.style.color = color;
+      pointSpan.style.animation = '';
+      pointSpan.style.border = 'none';
+    }
+    // 交換ボタン
+    const btn = document.createElement('button');
+    btn.textContent = '交換';
+    btn.className = 'exchange';
+    btn.style.marginLeft = '16px';
+    btn.addEventListener('click', () => {
+      if (luxuryPoint >= item.cost) {
+        const oldEffect = $('luxury-exchange-effect');
+        if (oldEffect) oldEffect.remove();
+        const effect = document.createElement('div');
+        effect.id = 'luxury-exchange-effect';
+        effect.textContent = `「${item.name}」ゲット！`;
+        Object.assign(effect.style, {
+          position: 'fixed', top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%) scale(0.7) rotate(-8deg)',
+          background: 'linear-gradient(90deg, #fffbe7 60%, #ffd54f 100%)',
+          color: '#ff9800', fontSize: '2.2em', fontWeight: 'bold',
+          padding: '32px 48px', borderRadius: '32px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.25)', zIndex: '9999',
+          textAlign: 'center', opacity: '0', pointerEvents: 'none',
+          letterSpacing: '0.1em', border: '4px solid #ff9800', transition: 'none'
+        });
+        document.body.appendChild(effect);
+        setTimeout(() => {
+          effect.animate([
+            { opacity: 0, transform: 'translate(-50%, -50%) scale(0.7) rotate(-8deg)' },
+            { opacity: 1, transform: 'translate(-50%, -50%) scale(1.1) rotate(2deg)' },
+            { opacity: 1, transform: 'translate(-50%, -50%) scale(1) rotate(0deg)' },
+            { opacity: 1, transform: 'translate(-50%, -50%) scale(1) rotate(0deg)' },
+            { opacity: 0, transform: 'translate(-50%, -50%) scale(0.7) rotate(8deg)' }
+          ], { duration: 1200, easing: 'cubic-bezier(.7,0,.3,1)' });
+          setTimeout(() => { effect.remove(); }, 1200);
+        }, 10);
+        setTimeout(() => {
+          luxuryPoint -= item.cost;
+          pointHistory.push({
+            type: "消費",
+            detail: `贅沢アイテム「${item.name}」交換`,
+            amount: -item.cost,
+            date: new Date().toISOString(),
+          });
+          saveAll();
+          updatePoints();
+          updateLuxuryItems();
+          updatePointHistory();
+          setTimeout(() => { alert(`「${item.name}」を交換しました！`); }, 100);
+        }, 1200);
+      } else {
+        alert("贅沢ポイントが足りません");
+      }
+    });
+    // 三点リーダー
+    const menuButton = document.createElement('button');
+    menuButton.textContent = '︙';
+    menuButton.className = 'menu-btn';
+    menuButton.style.marginLeft = '12px';
+    // メニュー
+    const menu = createMenu({
+      menuClass: 'luxury-menu',
+      onEdit: e => {
+        e.stopPropagation();
+        menu.style.display = 'none';
+        luxuryItemNameInput.value = item.name;
+        luxuryItemCostInput.value = item.cost;
+        const index = luxuryItems.findIndex(l => l === item);
+        if (index !== -1) luxuryItems.splice(index, 1);
+        saveAll();
+        updateLuxuryItems();
+        tabs.forEach(t => t.classList.remove('active'));
+        tabContents.forEach(c => c.classList.remove('active'));
+        document.querySelector('[data-tab="tab-luxury"]').classList.add('active');
+        $('tab-luxury').classList.add('active');
+      },
+      onDelete: e => {
+        e.stopPropagation();
+        menu.style.display = 'none';
+        if(confirm(`「${item.name}」を削除しますか？`)){
+          const index = luxuryItems.findIndex(l => l === item);
+          if (index !== -1) luxuryItems.splice(index, 1);
+          saveAll();
+          updateLuxuryItems();
+        }
+      }
+    });
+    menuButton.addEventListener('click', e => {
+      e.stopPropagation();
+      document.querySelectorAll('.context-menu').forEach(m => { if(m!==menu) m.style.display='none'; });
+      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    });
+    document.addEventListener('click', () => { menu.style.display = 'none'; });
+    // 右側
+    const rightWrapper = document.createElement('span');
+    rightWrapper.style.display = 'flex';
+    rightWrapper.style.alignItems = 'center';
+    rightWrapper.style.marginLeft = 'auto';
+    rightWrapper.style.position = 'relative';
+    rightWrapper.append(pointSpan, btn, menuButton, menu);
+    li.append(leftSpan, rightWrapper);
+    luxuryItemsList.appendChild(li);
+  });
+}
+
+// --- 贅沢アイテム追加 ---
+luxuryForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const name = luxuryItemNameInput.value.trim();
+  const cost = parseInt(luxuryItemCostInput.value);
+  if (!name || !cost || cost < 1) {
+    alert('アイテム名と贅沢ポイントを正しく入力してください');
+    return;
+  }
+  luxuryItems.push({ name, cost });
+  luxuryItemNameInput.value = '';
+  luxuryItemCostInput.value = '';
+  saveAll();
+  updateLuxuryItems();
+});
+
+// --- タスク一覧 ---
+function renderTaskList() {
+  const ongoing = $('task-list-ongoing');
+  const past = $('task-list-past');
+  ongoing.innerHTML = '';
+  past.innerHTML = '';
+  const todayStr = (new Date()).toISOString().slice(0, 10);
+
+  tasks.forEach((task, idx) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<strong>${task.name}</strong> ${task.point}pt<br>日付: ${task.date} / 繰り返し: ${getRepeatLabel(task)}`;
+    // ...三点リーダーメニュー等は省略...
+
+    // 継続中か過去か判定
+    let isPast = false;
+    if (!task.repeat && task.date < todayStr) isPast = true;
+    if (task.repeat && task.lastDoneDate && task.lastDoneDate < todayStr) isPast = true;
+    (isPast ? past : ongoing).appendChild(li);
+  });
+}
+function getRepeatLabel(task) {
+  if (task.repeatType === 'weekday') return '平日';
+  if (task.repeatType === 'holiday') return '土日祝';
+  if (task.repeatType === 'interval') return `間隔: ${task.repeatInterval}日`;
+  return task.repeat ? 'あり' : 'なし';
+}
+
+// --- ポイント履歴 ---
+function updatePointHistory() {
+  pointHistoryList.innerHTML = '';
+  [...pointHistory].reverse().forEach(entry => {
+    if (entry.type === "交換" || entry.type === "獲得" || entry.type === "取消" || entry.type === "消費") {
+      const li = document.createElement('li');
+      li.textContent = `[${entry.date.slice(0,10)}] ${entry.type}：${entry.detail} (${entry.amount > 0 ? '+' : ''}${entry.amount}pt)`;
+      pointHistoryList.appendChild(li);
+    }
+  });
+  const itemHistoryList = $('item-history-list');
+  itemHistoryList.innerHTML = '';
+  [...pointHistory].reverse().forEach(entry => {
+    if (entry.type === "消費" && entry.detail.includes("贅沢アイテム")) {
+      const li = document.createElement('li');
+      li.textContent = `[${entry.date.slice(0,10)}] ${entry.detail} (${entry.amount}pt)`;
+      itemHistoryList.appendChild(li);
+    }
+  });
+}
+
+// --- タスク完了フラグリセット ---
+function resetDailyDoneFlags() {
+  const todayStr = (new Date()).toISOString().slice(0,10);
+  tasks.forEach(task => {
+    if (task.repeat) {
+      if (task.lastDoneDate !== todayStr) task.doneToday = false;
+    } else {
+      if (task.doneToday && task.lastDoneDate !== todayStr) task.doneToday = false;
+    }
+  });
+  saveAll();
+}
+
+// --- ポイント→贅沢ポイント交換 ---
+exchangeButton.addEventListener('click', () => {
+  const exchangeAmount = 10;
+  if (pointTotal >= exchangeAmount) {
+    exchangeButtonAnimation();
+    pointTotal -= exchangeAmount;
+    luxuryPoint += 1;
+    pointHistory.push({
+      type: "交換",
+      detail: `ポイント${exchangeAmount}pt→贅沢ポイント1ptに交換`,
+      amount: -exchangeAmount,
+      date: new Date().toISOString(),
+    });
+    pointHistory.push({
+      type: "獲得",
+      detail: `贅沢ポイント1pt獲得（ポイント交換）`,
+      amount: 1,
+      date: new Date().toISOString(),
+    });
+    saveAll();
+    updatePoints();
+    updatePointHistory();
+  } else {
+    alert("ポイントが足りません（10pt以上必要）");
+  }
+});
+
+// --- 交換ボタンアニメーション ---
+function exchangeButtonAnimation() {
+  exchangeButton.animate([
+    { transform: 'scale(1)', backgroundColor: '#fff' },
+    { transform: 'scale(1.15)', backgroundColor: '#ffe082' },
+    { transform: 'scale(1)', backgroundColor: '#fff' }
+  ], { duration: 400, easing: 'ease' });
+}
+
+// --- 初期化 ---
+function init() {
+  resetDailyDoneFlags();
+  updatePoints();
+  updateTodayTasks();
+  renderCalendar();
+  updateLuxuryItems();
+  updatePointHistory();
+  renderTaskList();
+}
+init();
+
+function isTaskForToday(task, todayStr) {
+  if (!task.repeat) return task.date === todayStr;
+  if (task.repeatType === 'weekday') {
+    const day = new Date(todayStr).getDay();
+    return day >= 1 && day <= 5;
+  }
+  if (task.repeatType === 'holiday') {
+    const day = new Date(todayStr).getDay();
+    return day === 0 || day === 6;
+  }
+  if (task.repeatType === 'interval') {
+    const start = new Date(task.date);
+    const today = new Date(todayStr);
+    const diff = Math.floor((today - start) / (1000 * 60 * 60 * 24));
+    return diff % task.repeatInterval === 0 && diff >= 0;
+  }
+  return task.date === todayStr;
+}

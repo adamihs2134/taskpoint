@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>タスク管理アプリ</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>タスク管理アプリ</h1>
+  <div class="points">
+    <div>ポイント: <span id="point-total">0</span></div>
+    <div>贅沢ポイント: <span id="luxury-point">0</span></div>
+    <button id="exchange-button">ポイント交換</button>
+  </div>
+</header>
+<main>
+  <nav class="tab-buttons">
+    <button class="tab active" data-tab="tab-today">今日のタスク</button>
+    <button class="tab" data-tab="tab-task-add">タスク追加</button>
+    <button class="tab" data-tab="tab-luxury">交換</button>
+    <button class="tab" data-tab="tab-history">履歴</button>
+    <button class="tab" data-tab="tab-task-list">タスク一覧</button>
+  </nav>
+
+  <section id="tab-today" class="tab-content active">
+    <ul id="today-task-list"></ul>
+  </section>
+
+  <section id="tab-task-add" class="tab-content">
+    <!-- タスク追加フォーム -->
+    <form id="task-form" class="flex-form wide-form task-add-form">
+      <input type="text" id="task-input" placeholder="タスク名" required />
+      <input type="number" id="point-input" placeholder="ポイント" min="1" required />
+      <input type="date" id="date-input" required />
+      <select id="repeat-type">
+        <option value="none">繰り返しなし</option>
+        <option value="weekday">平日</option>
+        <option value="holiday">土日祝</option>
+        <option value="interval">間隔を指定</option>
+      </select>
+      <input type="number" id="repeat-interval" placeholder="間隔を指定" min="1" style="display:none;" />
+      <div class="task-form-buttons">
+        <button type="submit">追加</button>
+        <button type="button" id="task-cancel-btn">キャンセル</button>
+      </div>
+    </form>
+    <div class="calendar-controls">
+      <button id="prev-month">◀ 前月</button>
+      <span id="current-month"></span>
+      <button id="next-month">次月 ▶</button>
+    </div>
+    <div class="calendar-grid" id="calendar"></div>
+  </section>
+
+  <section id="tab-luxury" class="tab-content">
+    <!-- 贅沢アイテム追加フォーム -->
+    <form id="luxuryForm" class="flex-form wide-form">
+      <input type="text" id="luxury-item-name" placeholder="アイテム名" required />
+      <input type="number" id="luxury-item-cost" placeholder="必要贅沢ポイント" min="1" required />
+      <button type="submit">追加</button>
+    </form>
+    <ul id="luxury-items"></ul>
+  </section>
+
+  <section id="tab-history" class="tab-content">
+    <nav class="subtab-buttons">
+      <button class="subtab active" data-subtab="point-history-list">ポイント履歴</button>
+      <button class="subtab" data-subtab="item-history-list">アイテム履歴</button>
+    </nav>
+    <ul id="point-history-list" class="history-list"></ul>
+    <ul id="item-history-list" class="history-list" style="display:none;"></ul>
+  </section>
+
+  <section id="tab-task-list" class="tab-content">
+    <h3>継続中のタスク</h3>
+    <ul id="task-list-ongoing"></ul>
+    <h3>過去のタスク</h3>
+    <ul id="task-list-past"></ul>
+  </section>
+</main>
+<script src="script.js"></script>
+</body>
+</html>
