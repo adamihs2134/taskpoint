@@ -88,6 +88,8 @@ function updateTodayTasks() {
   todayTaskList.innerHTML = '';
   const todayStr = (new Date()).toISOString().slice(0, 10);
   tasks.forEach((task, idx) => {
+    // まだ開始前の日付ならスキップ
+    if (task.date > todayStr) return;
     if (isTaskForToday(task, todayStr)) {
       const alreadyDoneToday = task.lastDoneDate === todayStr;
       const li = document.createElement('li');
@@ -253,9 +255,8 @@ function renderCalendar(year = currentDate.getFullYear(), month = currentDate.ge
   }
 }
 
-// --- タスク追加 ---
+// --- タスク追加 ---（毎日を追加）
 repeatType.addEventListener('change', () => {
-  // repeat-intervalの表示切替
   if (repeatType.value === 'interval') {
     repeatInterval.style.display = 'block';
   } else {
@@ -273,7 +274,7 @@ taskForm.addEventListener('submit', e => {
   let repeatIntervalVal = repeatType.value === 'interval' ? parseInt(repeatInterval.value) : null;
   if (!name || !point || !date) return alert('全て入力してください');
   if (repeatTypeVal === 'interval' && (!repeatIntervalVal || repeatIntervalVal < 1)) {
-    return alert('n日間隔を正しく入力してください');
+    return alert('間隔を正しく入力してください');
   }
   tasks.push({
     name, point, date, repeat,
@@ -505,22 +506,35 @@ function renderTaskList() {
   const todayStr = (new Date()).toISOString().slice(0, 10);
 
   tasks.forEach((task, idx) => {
+    // まだ開始前の日付ならスキップ
+    if (task.date > todayStr) return;
     const li = document.createElement('li');
-    li.innerHTML = `<strong>${task.name}</strong> ${task.point}pt<br>日付: ${task.date} / 繰り返し: ${getRepeatLabel(task)}`;
-    // ...三点リーダーメニュー等は省略...
-
     // 継続中か過去か判定
     let isPast = false;
     if (!task.repeat && task.date < todayStr) isPast = true;
     if (task.repeat && task.lastDoneDate && task.lastDoneDate < todayStr) isPast = true;
-    (isPast ? past : ongoing).appendChild(li);
+
+    if (!isPast) {
+      // 継続中のタスク：開始日時・繰り返し頻度を改行で
+      li.innerHTML = `<strong>${task.name}</strong> ${task.point}pt<br>
+        開始日時: ${task.date}<br>
+        繰り返し頻度: ${getRepeatLabel(task)}`;
+      ongoing.appendChild(li);
+    } else {
+      // 過去のタスクは従来通り
+      li.innerHTML = `<strong>${task.name}</strong> ${task.point}pt<br>日付: ${task.date} / 繰り返し: ${getRepeatLabel(task)}`;
+      past.appendChild(li);
+    }
   });
 }
 function getRepeatLabel(task) {
+  // 選択肢に応じた日本語表示
+  if (task.repeatType === 'everyday') return '毎日';
   if (task.repeatType === 'weekday') return '平日';
   if (task.repeatType === 'holiday') return '土日祝';
   if (task.repeatType === 'interval') return `間隔: ${task.repeatInterval}日`;
-  return task.repeat ? 'あり' : 'なし';
+  if (task.repeatType === 'none' || !task.repeat) return 'なし';
+  return task.repeatType;
 }
 
 // --- ポイント履歴 ---
@@ -607,6 +621,7 @@ init();
 
 function isTaskForToday(task, todayStr) {
   if (!task.repeat) return task.date === todayStr;
+  if (task.repeatType === 'everyday') return true;
   if (task.repeatType === 'weekday') {
     const day = new Date(todayStr).getDay();
     return day >= 1 && day <= 5;

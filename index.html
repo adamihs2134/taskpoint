@@ -33,17 +33,24 @@
 
   <section id="tab-task-add" class="tab-content">
     <!-- タスク追加フォーム -->
-    <form id="task-form" class="flex-form wide-form task-add-form">
-      <input type="text" id="task-input" placeholder="タスク名" required />
-      <input type="number" id="point-input" placeholder="ポイント" min="1" required />
-      <input type="date" id="date-input" required />
-      <select id="repeat-type">
-        <option value="none">繰り返しなし</option>
-        <option value="weekday">平日</option>
-        <option value="holiday">土日祝</option>
-        <option value="interval">間隔を指定</option>
-      </select>
-      <input type="number" id="repeat-interval" placeholder="間隔を指定" min="1" style="display:none;" />
+    <form id="task-form" class="task-add-form-vertical">
+      <div class="form-row">
+        <input type="text" id="task-input" placeholder="タスク名" required />
+      </div>
+      <div class="form-row">
+        <input type="number" id="point-input" placeholder="獲得ポイント" min="1" required />
+      </div>
+      <div class="form-row">
+        <input type="date" id="date-input" required />
+        <select id="repeat-type">
+          <option value="none">繰り返しなし</option>
+          <option value="everyday">毎日</option>
+          <option value="weekday">平日</option>
+          <option value="holiday">土日祝</option>
+          <option value="interval">間隔を指定</option>
+        </select>
+        <input type="number" id="repeat-interval" placeholder="間隔を指定" min="1" style="display:none;" />
+      </div>
       <div class="task-form-buttons">
         <button type="submit">追加</button>
         <button type="button" id="task-cancel-btn">キャンセル</button>

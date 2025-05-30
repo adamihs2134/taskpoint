@@ -244,3 +244,38 @@ li.done { color: #aaa; text-decoration: line-through; }
   75% { filter: drop-shadow(0 0 8px green);}
   100% { filter: drop-shadow(0 0 8px blue);}
 }
+.task-add-form-vertical {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto 16px auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.task-add-form-vertical .form-row {
+  display: flex;
+  gap: 10px;
+}
+.task-add-form-vertical input,
+.task-add-form-vertical select {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 16px;
+  padding: 8px;
+  box-sizing: border-box;
+}
+.task-add-form-vertical .task-form-buttons {
+  display: flex;
+  gap: 10px;
+}
+.task-add-form-vertical .task-form-buttons button {
+  flex: 1 1 0;
+  min-width: 100px;
+  font-size: 16px;
+  padding: 8px 0;
+}
+@media (max-width: 600px) {
+  .task-add-form-vertical {
+    max-width: 100%;
+  }
+}
