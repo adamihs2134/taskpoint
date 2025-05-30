@@ -255,7 +255,7 @@ function renderCalendar(year = currentDate.getFullYear(), month = currentDate.ge
   }
 }
 
-// --- タスク追加 ---（毎日を追加）
+// --- タスク追加 ---
 repeatType.addEventListener('change', () => {
   if (repeatType.value === 'interval') {
     repeatInterval.style.display = 'block';
@@ -269,6 +269,7 @@ taskForm.addEventListener('submit', e => {
   const name = taskInput.value.trim();
   const point = parseInt(pointInput.value);
   const date = dateInput.value;
+  const endDate = document.getElementById('end-date-input').value || null;
   let repeat = repeatType.value !== 'none';
   let repeatTypeVal = repeatType.value;
   let repeatIntervalVal = repeatType.value === 'interval' ? parseInt(repeatInterval.value) : null;
@@ -277,7 +278,7 @@ taskForm.addEventListener('submit', e => {
     return alert('間隔を正しく入力してください');
   }
   tasks.push({
-    name, point, date, repeat,
+    name, point, date, endDate, repeat,
     repeatType: repeatTypeVal,
     repeatInterval: repeatIntervalVal,
     doneToday: false,
@@ -286,6 +287,7 @@ taskForm.addEventListener('submit', e => {
   taskInput.value = '';
   pointInput.value = '';
   dateInput.value = '';
+  document.getElementById('end-date-input').value = '';
   repeatType.value = 'none';
   repeatInterval.value = '';
   repeatInterval.style.display = 'none';
@@ -314,17 +316,32 @@ function createMenu({ onEdit, onDelete, menuClass = '' }) {
   menu.style.backgroundColor = '#fff';
   menu.style.border = '1px solid #ccc';
   menu.style.padding = '0';
-  menu.style.zIndex = '100';
+  menu.style.zIndex = '1000'; // ← z-indexを大きく
   menu.style.minWidth = '80px';
   menu.style.flexDirection = 'column';
-  const editBtn = document.createElement('div');
+  menu.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+
+  // ボタンをdivからbuttonに変更し、クリックしやすく
+  const editBtn = document.createElement('button');
   editBtn.textContent = '編集';
   editBtn.className = 'menu-edit';
+  editBtn.style.width = '100%';
+  editBtn.style.padding = '8px 0';
+  editBtn.style.border = 'none';
+  editBtn.style.background = 'none';
+  editBtn.style.cursor = 'pointer';
   editBtn.addEventListener('click', onEdit);
-  const deleteBtn = document.createElement('div');
+
+  const deleteBtn = document.createElement('button');
   deleteBtn.textContent = '削除';
   deleteBtn.className = 'menu-delete';
+  deleteBtn.style.width = '100%';
+  deleteBtn.style.padding = '8px 0';
+  deleteBtn.style.border = 'none';
+  deleteBtn.style.background = 'none';
+  deleteBtn.style.cursor = 'pointer';
   deleteBtn.addEventListener('click', onDelete);
+
   menu.append(editBtn, deleteBtn);
   return menu;
 }
@@ -501,12 +518,10 @@ luxuryForm.addEventListener('submit', e => {
 function renderTaskList() {
   const ongoing = $('task-list-ongoing');
   const past = $('task-list-past');
-  // 新規追加：これからのタスク用リスト
   let upcoming = $('task-list-upcoming');
   if (!upcoming) {
     upcoming = document.createElement('ul');
     upcoming.id = 'task-list-upcoming';
-    // 既に見出しがなければ追加
     const section = document.getElementById('tab-task-list');
     if (section && !document.getElementById('upcoming-title')) {
       const title = document.createElement('h3');
@@ -523,11 +538,83 @@ function renderTaskList() {
 
   tasks.forEach((task, idx) => {
     const li = document.createElement('li');
+    li.style.position = 'relative';
+
+    // タスク名
+    const left = document.createElement('span');
+    left.className = 'task-list-title';
+    left.textContent = task.name;
+
+    // 開始日時・繰り返し頻度・終了日時
+    const info = document.createElement('div');
+    info.className = 'task-list-info';
+    info.innerHTML =
+      `開始日時: ${task.date || '-'}<br>` +
+      `繰り返し頻度: ${getRepeatLabel(task)}<br>` +
+      `終了日時: ${task.endDate || '-'}`;
+
+    // ポイント
+    const pointSpan = document.createElement('span');
+    pointSpan.textContent = `${task.point}pt`;
+
+    // 三点リーダーメニュー
+    const menuButton = document.createElement('button');
+    menuButton.textContent = '︙';
+    menuButton.className = 'menu-btn';
+    menuButton.type = 'button';
+
+    // メニュー
+    const menu = createMenu({
+      menuClass: 'task-menu',
+      onEdit: e => {
+        e.stopPropagation();
+        menu.style.display = 'none';
+        taskInput.value = task.name;
+        pointInput.value = task.point;
+        dateInput.value = task.date;
+        document.getElementById('end-date-input').value = task.endDate || '';
+        repeatType.value = task.repeatType || 'none';
+        repeatInterval.value = task.repeatInterval || '';
+        repeatInterval.style.display = (task.repeatType === 'interval') ? 'block' : 'none';
+        tasks.splice(idx, 1);
+        saveAll();
+        updateTodayTasks();
+        renderCalendar();
+        renderTaskList();
+        tabs.forEach(t => t.classList.remove('active'));
+        tabContents.forEach(c => c.classList.remove('active'));
+        document.querySelector('[data-tab="tab-task-add"]').classList.add('active');
+        $('tab-task-add').classList.add('active');
+      },
+      onDelete: e => {
+        e.stopPropagation();
+        menu.style.display = 'none';
+        if(confirm(`タスク「${task.name}」を削除しますか？`)){
+          tasks.splice(idx, 1);
+          saveAll();
+          updateTodayTasks();
+          renderCalendar();
+          renderTaskList();
+        }
+      }
+    });
+    menuButton.addEventListener('click', e => {
+      e.stopPropagation();
+      document.querySelectorAll('.context-menu').forEach(m => { if(m!==menu) m.style.display='none'; });
+      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    });
+    // スクロールやスマホでも閉じる
+    document.addEventListener('click', () => { menu.style.display = 'none'; });
+
+    // 右側（ポイントと三点リーダー）を右端に固定
+    const right = document.createElement('span');
+    right.className = 'task-list-right';
+    right.append(pointSpan, menuButton, menu);
+
+    li.append(left, info, right);
+
     // これからのタスク（明日以降開始）
     if (task.date > todayStr) {
-      li.innerHTML = `<strong>${task.name}</strong> ${task.point}pt<br>
-        開始日時: ${task.date}<br>
-        繰り返し頻度: ${getRepeatLabel(task)}`;
       upcoming.appendChild(li);
       return;
     }
@@ -537,14 +624,8 @@ function renderTaskList() {
     if (task.repeat && task.lastDoneDate && task.lastDoneDate < todayStr) isPast = true;
 
     if (!isPast) {
-      // 継続中のタスク
-      li.innerHTML = `<strong>${task.name}</strong> ${task.point}pt<br>
-        開始日時: ${task.date}<br>
-        繰り返し頻度: ${getRepeatLabel(task)}`;
       ongoing.appendChild(li);
     } else {
-      // 過去のタスク
-      li.innerHTML = `<strong>${task.name}</strong> ${task.point}pt<br>日付: ${task.date} / 繰り返し: ${getRepeatLabel(task)}`;
       past.appendChild(li);
     }
   });

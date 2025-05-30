@@ -279,3 +279,63 @@ li.done { color: #aaa; text-decoration: line-through; }
     max-width: 100%;
   }
 }
+
+/* タスク一覧のli内でタスク名・開始日時等・ポイント・三点リーダーを横並びに */
+#task-list-upcoming li,
+#task-list-ongoing li,
+#task-list-past li {
+  display: flex;
+  align-items: flex-start;
+  min-height: 56px;
+  position: relative;
+  gap: 10px;
+}
+
+.task-list-title {
+  flex: 0 0 160px;
+  font-weight: bold;
+  font-size: 1.1em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-list-info {
+  flex: 1 1 auto;
+  font-size: 0.95em;
+  margin: 0 16px;
+  white-space: pre-line;
+  min-width: 120px;
+}
+
+.task-list-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 100px;
+  justify-content: flex-end;
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+}
+.context-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background: #fff;
+  border: 1px solid #ccc;
+  z-index: 1000;
+  min-width: 80px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  display: none;
+  flex-direction: column;
+}
+.context-menu button {
+  width: 100%;
+  padding: 8px 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
