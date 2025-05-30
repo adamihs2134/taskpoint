@@ -83,14 +83,30 @@ function getPachinkoColor(val) {
   return '#111';
 }
 
+// --- 連続達成ボーナス用の補助関数 ---
+function getStreak(task) {
+  // 連続達成日数を計算
+  if (!task.lastDoneDate || !task.doneHistory) return 0;
+  let streak = 0;
+  let date = new Date(task.lastDoneDate);
+  for (let i = task.doneHistory.length - 1; i >= 0; i--) {
+    if (!task.doneHistory[i]) break;
+    streak++;
+    date.setDate(date.getDate() - 1);
+  }
+  return streak;
+}
+
 // --- 今日のタスク表示 ---
 function updateTodayTasks() {
   todayTaskList.innerHTML = '';
   const todayStr = (new Date()).toISOString().slice(0, 10);
+  let hasTask = false;
   tasks.forEach((task, idx) => {
     // まだ開始前の日付ならスキップ
     if (task.date > todayStr) return;
     if (isTaskForToday(task, todayStr)) {
+      hasTask = true;
       const alreadyDoneToday = task.lastDoneDate === todayStr;
       const li = document.createElement('li');
       li.style.display = 'flex';
@@ -178,7 +194,55 @@ function updateTodayTasks() {
         if (checkbox.checked && !task.doneToday && !alreadyDoneToday) {
           task.doneToday = true;
           task.lastDoneDate = todayStr;
+          // 連続達成履歴
+          if (!task.doneHistory) task.doneHistory = [];
+          // 直前の日付
+          let prevDate = task.doneHistory.length > 0 ? task.doneHistory[task.doneHistory.length - 1].date : null;
+          // 連続かどうか判定
+          let yesterday = new Date(todayStr);
+          yesterday.setDate(yesterday.getDate() - 1);
+          let yesterdayStr = yesterday.toISOString().slice(10);
+          let isStreak = (task.lastDoneDate && prevDate === yesterdayStr);
+
+          // 履歴に追加
+          task.doneHistory.push({ date: todayStr, done: true });
+
+          // ボーナス判定
+          let streakCount = 1;
+          for (let i = task.doneHistory.length - 2; i >= 0; i--) {
+            if (task.doneHistory[i].done) {
+              let prev = new Date(task.doneHistory[i + 1].date);
+              prev.setDate(prev.getDate() - 1);
+              if (task.doneHistory[i].date === prev.toISOString().slice(10)) {
+                streakCount++;
+              } else {
+                break;
+              }
+            } else {
+              break;
+            }
+          }
+
+          let bonus = 0;
+          if (task.repeatType === 'weekday' && streakCount === 5) {
+            bonus = task.point * 2;
+          }
+          if (task.repeatType === 'everyday' && streakCount === 7) {
+            bonus = task.point * 2;
+            // 7日連続達成後は履歴をリセット（最新1件だけ残す）
+            task.doneHistory = [task.doneHistory[task.doneHistory.length - 1]];
+          }
           pointTotal += task.point;
+          if (bonus > 0) {
+            pointTotal += bonus;
+            pointHistory.push({
+              type: 'ボーナス',
+              detail: `タスク「${task.name}」連続達成ボーナス`,
+              amount: bonus,
+              date: new Date().toISOString(),
+            });
+            alert(`連続達成ボーナス！+${bonus}pt`);
+          }
           pointHistory.push({
             type: '獲得',
             detail: `タスク「${task.name}」達成`,
@@ -191,6 +255,10 @@ function updateTodayTasks() {
         } else if (!checkbox.checked && task.doneToday && !alreadyDoneToday) {
           task.doneToday = false;
           task.lastDoneDate = null;
+          // 直近の履歴を取り消し
+          if (task.doneHistory && task.doneHistory.length > 0) {
+            task.doneHistory.pop();
+          }
           pointTotal -= task.point;
           pointHistory.push({
             type: '取消',
@@ -205,6 +273,15 @@ function updateTodayTasks() {
       });
     }
   });
+  // タスクがなければメッセージ表示
+  if (!hasTask) {
+    const li = document.createElement('li');
+    li.textContent = 'タスクを追加しよう！';
+    li.style.textAlign = 'center';
+    li.style.justifyContent = 'center';
+    li.style.width = '100%';
+    todayTaskList.appendChild(li);
+  }
 }
 
 // --- カレンダー ---
@@ -273,6 +350,13 @@ taskForm.addEventListener('submit', e => {
   let repeat = repeatType.value !== 'none';
   let repeatTypeVal = repeatType.value;
   let repeatIntervalVal = repeatType.value === 'interval' ? parseInt(repeatInterval.value) : null;
+
+  // 終了日時が開始日時より前の場合はエラー
+  if (endDate && date && endDate < date) {
+    alert('開始日時以降の日付を入力してください');
+    return;
+  }
+
   if (!name || !point || !date) return alert('全て入力してください');
   if (repeatTypeVal === 'interval' && (!repeatIntervalVal || repeatIntervalVal < 1)) {
     return alert('間隔を正しく入力してください');
