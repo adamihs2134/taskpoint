@@ -707,40 +707,6 @@ function renderTaskList() {
     left.className = 'task-list-title';
     left.textContent = task.name;
 
-    // ボーナス進捗バー（これからのタスクには表示しない）
-    let barWrapper = null;
-    let streakCount = 0;
-    let bonusTarget = 0;
-    let barColor = '#81c784';
-    if (!task.doneHistory) task.doneHistory = [];
-    if (task.repeatType === 'weekday') {
-      streakCount = 1;
-      for (let i = task.doneHistory.length - 2; i >= 0; i--) {
-        let prev = new Date(task.doneHistory[i + 1].date);
-        prev.setDate(prev.getDate() - 1);
-        if (task.doneHistory[i].done && task.doneHistory[i].date === prev.toISOString().slice(0, 10)) {
-          streakCount++;
-        } else {
-          break;
-        }
-      }
-      bonusTarget = 5;
-      barColor = '#42a5f5';
-    } else if (task.repeatType === 'everyday') {
-      streakCount = 1;
-      for (let i = task.doneHistory.length - 2; i >= 0; i--) {
-        let prev = new Date(task.doneHistory[i + 1].date);
-        prev.setDate(prev.getDate() - 1);
-        if (task.doneHistory[i].done && task.doneHistory[i].date === prev.toISOString().slice(0, 10)) {
-          streakCount++;
-        } else {
-          break;
-        }
-      }
-      bonusTarget = 7;
-      barColor = '#ffb300';
-    }
-
     // 開始日時・繰り返し頻度・終了日時・獲得ポイント（4行縦並び）
     const info = document.createElement('div');
     info.className = 'task-list-info';
@@ -767,50 +733,7 @@ function renderTaskList() {
     pointSpan.className = 'task-point';
     pointSpan.style.textAlign = 'center';
 
-    // ボーナスバーは「これからのタスク」以外のみ
-    if (bonusTarget > 0 && task.date <= todayStr) {
-      barWrapper = document.createElement('div');
-      barWrapper.style.width = '100%';
-      barWrapper.style.margin = '6px 0 0 0';
-      barWrapper.style.display = 'flex';
-      barWrapper.style.alignItems = 'center';
-      barWrapper.style.gap = '8px';
-      barWrapper.style.justifyContent = 'center';
-
-      const bar = document.createElement('div');
-      bar.style.flex = '1';
-      bar.style.height = '12px';
-      bar.style.background = '#eee';
-      bar.style.borderRadius = '6px';
-      bar.style.overflow = 'hidden';
-      bar.style.position = 'relative';
-      bar.style.maxWidth = '120px';
-
-      const fill = document.createElement('div');
-      fill.style.height = '100%';
-      fill.style.width = `${Math.min(streakCount, bonusTarget) / bonusTarget * 100}%`;
-      fill.style.background = barColor;
-      fill.style.borderRadius = '6px';
-      fill.style.transition = 'width 0.3s';
-
-      bar.appendChild(fill);
-
-      const barText = document.createElement('span');
-      barText.style.fontSize = '0.9em';
-      barText.style.marginLeft = '8px';
-      barText.style.color = '#666';
-      if (streakCount >= bonusTarget) {
-        barText.textContent = 'ボーナス達成！';
-        barText.style.color = '#d32f2f';
-      } else {
-        barText.textContent = `あと${bonusTarget - streakCount}日`;
-      }
-
-      barWrapper.append(bar, barText);
-    }
-
     info.append(startSpan, repeatSpan, endSpan, pointSpan);
-    if (barWrapper) info.append(barWrapper);
 
     // 三点リーダーメニュー
     const menuButton = document.createElement('button');
@@ -866,7 +789,7 @@ function renderTaskList() {
     right.className = 'task-list-right';
     right.append(menuButton, menu);
 
-    // 並び順: タスク名 | 4行情報+バー | 三点リーダー
+    // 並び順: タスク名 | 4行情報 | 三点リーダー
     li.append(left, info, right);
 
     // これからのタスク（明日以降開始）
