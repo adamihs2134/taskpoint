@@ -294,10 +294,13 @@ li.done { color: #aaa; text-decoration: line-through; }
 .task-list-title {
   flex: 0 0 160px;
   font-weight: bold;
-  font-size: 1.1em;
+  font-size: 1.5em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: left;    /* ←中央寄せから左寄せに変更 */
+  width: 100%;
+  display: block;
 }
 
 .task-list-info {
@@ -306,6 +309,28 @@ li.done { color: #aaa; text-decoration: line-through; }
   margin: 0 16px;
   white-space: pre-line;
   min-width: 120px;
+}
+
+/* タスク一覧の4行情報を中央寄せ・余白小さめに */
+#task-list-upcoming li .task-list-info,
+#task-list-ongoing li .task-list-info,
+#task-list-past li .task-list-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0 8px;
+  gap: 2px;
+}
+
+#task-list-upcoming li .task-point,
+#task-list-ongoing li .task-point,
+#task-list-past li .task-point {
+  margin: 0;
+  font-size: 0.95em;
+  color: #888;
+  display: block;
+  text-align: center;
 }
 
 .task-list-right {
@@ -338,4 +363,36 @@ li.done { color: #aaa; text-decoration: line-through; }
   border: none;
   background: none;
   cursor: pointer;
+}
+
+/* タスク一覧のボーナスバー用 */
+#task-list-upcoming li .task-list-info,
+#task-list-ongoing li .task-list-info,
+#task-list-past li .task-list-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0 8px;
+  gap: 2px;
+}
+
+#task-list-upcoming li .bonus-bar,
+#task-list-ongoing li .bonus-bar,
+#task-list-past li .bonus-bar {
+  flex: 1;
+  height: 12px;
+  background: #eee;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+  max-width: 120px;
+}
+
+#task-list-upcoming li .bonus-bar-fill,
+#task-list-ongoing li .bonus-bar-fill,
+#task-list-past li .bonus-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.3s;
 }

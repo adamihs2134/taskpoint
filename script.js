@@ -111,6 +111,14 @@ function updateTodayTasks() {
       const li = document.createElement('li');
       li.style.display = 'flex';
       li.style.alignItems = 'center';
+      li.style.flexDirection = 'column';
+      li.style.position = 'relative';
+
+      // 上段：横並び
+      const row = document.createElement('div');
+      row.style.display = 'flex';
+      row.style.alignItems = 'center';
+      row.style.width = '100%';
 
       // チェックボックス
       const checkbox = document.createElement('input');
@@ -125,6 +133,7 @@ function updateTodayTasks() {
       nameSpan.className = 'task-name';
       nameSpan.style.flex = '1';
       nameSpan.style.textAlign = 'left';
+      nameSpan.style.fontWeight = 'bold';
       if (task.doneToday) nameSpan.classList.add('done');
 
       // 右側ラッパー
@@ -186,7 +195,85 @@ function updateTodayTasks() {
       document.addEventListener('click', () => { menu.style.display = 'none'; });
 
       rightWrapper.append(pointSpan, menuButton, menu);
-      li.append(checkbox, nameSpan, rightWrapper);
+      row.append(checkbox, nameSpan, rightWrapper);
+
+      // ボーナスバー（今日のタスクのみ）
+      let streakCount = 0;
+      let bonusTarget = 0;
+      let barColor = '#81c784';
+      if (!task.doneHistory) task.doneHistory = [];
+
+      // streakCountは「連続でチェックした日数」だけカウント
+      if (task.repeatType === 'weekday' || task.repeatType === 'everyday') {
+        // 直近から逆順で連続しているdone=trueの日付をカウント
+        for (let i = task.doneHistory.length - 1; i >= 0; i--) {
+          const entry = task.doneHistory[i];
+          if (!entry || !entry.done) break;
+          // 連続かどうか判定
+          if (streakCount === 0) {
+            streakCount = 1;
+          } else {
+            const prevDate = new Date(task.doneHistory[i + 1].date);
+            prevDate.setDate(prevDate.getDate() - 1);
+            if (entry.date === prevDate.toISOString().slice(0, 10)) {
+              streakCount++;
+            } else {
+              break;
+            }
+          }
+        }
+        if (task.repeatType === 'weekday') {
+          bonusTarget = 5;
+          barColor = '#42a5f5';
+        } else if (task.repeatType === 'everyday') {
+          bonusTarget = 7;
+          barColor = '#ffb300';
+        }
+      }
+
+      // ボーナスバーの表示条件
+      let showBonusBar = false;
+      if (bonusTarget > 0 && streakCount < bonusTarget && streakCount > 0) {
+        showBonusBar = true;
+      }
+
+      const barWrapper = document.createElement('div');
+      if (showBonusBar) {
+        barWrapper.style.width = '100%';
+        barWrapper.style.margin = '6px 0 0 0';
+        barWrapper.style.display = 'flex';
+        barWrapper.style.alignItems = 'center';
+        barWrapper.style.gap = '8px';
+
+        const bar = document.createElement('div');
+        bar.style.flex = '1';
+        bar.style.height = '12px';
+        bar.style.background = '#eee';
+        bar.style.borderRadius = '6px';
+        bar.style.overflow = 'hidden';
+        bar.style.position = 'relative';
+        bar.style.maxWidth = '120px';
+
+        const fill = document.createElement('div');
+        fill.style.height = '100%';
+        fill.style.width = `${Math.min(streakCount, bonusTarget) / bonusTarget * 100}%`;
+        fill.style.background = barColor;
+        fill.style.borderRadius = '6px';
+        fill.style.transition = 'width 0.3s';
+
+        bar.appendChild(fill);
+
+        const barText = document.createElement('span');
+        barText.style.fontSize = '0.9em';
+        barText.style.marginLeft = '8px';
+        barText.style.color = '#666';
+        barText.textContent = `あと${bonusTarget - streakCount}日`;
+
+        barWrapper.append(bar, barText);
+      }
+
+      li.append(row);
+      if (showBonusBar) li.append(barWrapper);
       todayTaskList.appendChild(li);
 
       // チェック切替
@@ -194,35 +281,27 @@ function updateTodayTasks() {
         if (checkbox.checked && !task.doneToday && !alreadyDoneToday) {
           task.doneToday = true;
           task.lastDoneDate = todayStr;
-          // 連続達成履歴
           if (!task.doneHistory) task.doneHistory = [];
-          // 直前の日付
-          let prevDate = task.doneHistory.length > 0 ? task.doneHistory[task.doneHistory.length - 1].date : null;
-          // 連続かどうか判定
-          let yesterday = new Date(todayStr);
-          yesterday.setDate(yesterday.getDate() - 1);
-          let yesterdayStr = yesterday.toISOString().slice(10);
-          let isStreak = (task.lastDoneDate && prevDate === yesterdayStr);
-
-          // 履歴に追加
           task.doneHistory.push({ date: todayStr, done: true });
 
           // ボーナス判定
-          let streakCount = 1;
-          for (let i = task.doneHistory.length - 2; i >= 0; i--) {
-            if (task.doneHistory[i].done) {
-              let prev = new Date(task.doneHistory[i + 1].date);
-              prev.setDate(prev.getDate() - 1);
-              if (task.doneHistory[i].date === prev.toISOString().slice(10)) {
+          let streakCount = 0;
+          // 直近から逆順で連続しているdone=trueの日付をカウント
+          for (let i = task.doneHistory.length - 1; i >= 0; i--) {
+            const entry = task.doneHistory[i];
+            if (!entry || !entry.done) break;
+            if (streakCount === 0) {
+              streakCount = 1;
+            } else {
+              const prevDate = new Date(task.doneHistory[i + 1].date);
+              prevDate.setDate(prevDate.getDate() - 1);
+              if (entry.date === prevDate.toISOString().slice(0, 10)) {
                 streakCount++;
               } else {
                 break;
               }
-            } else {
-              break;
             }
           }
-
           let bonus = 0;
           if (task.repeatType === 'weekday' && streakCount === 5) {
             bonus = task.point * 2;
@@ -255,7 +334,6 @@ function updateTodayTasks() {
         } else if (!checkbox.checked && task.doneToday && !alreadyDoneToday) {
           task.doneToday = false;
           task.lastDoneDate = null;
-          // 直近の履歴を取り消し
           if (task.doneHistory && task.doneHistory.length > 0) {
             task.doneHistory.pop();
           }
@@ -629,17 +707,110 @@ function renderTaskList() {
     left.className = 'task-list-title';
     left.textContent = task.name;
 
-    // 開始日時・繰り返し頻度・終了日時
+    // ボーナス進捗バー（これからのタスクには表示しない）
+    let barWrapper = null;
+    let streakCount = 0;
+    let bonusTarget = 0;
+    let barColor = '#81c784';
+    if (!task.doneHistory) task.doneHistory = [];
+    if (task.repeatType === 'weekday') {
+      streakCount = 1;
+      for (let i = task.doneHistory.length - 2; i >= 0; i--) {
+        let prev = new Date(task.doneHistory[i + 1].date);
+        prev.setDate(prev.getDate() - 1);
+        if (task.doneHistory[i].done && task.doneHistory[i].date === prev.toISOString().slice(0, 10)) {
+          streakCount++;
+        } else {
+          break;
+        }
+      }
+      bonusTarget = 5;
+      barColor = '#42a5f5';
+    } else if (task.repeatType === 'everyday') {
+      streakCount = 1;
+      for (let i = task.doneHistory.length - 2; i >= 0; i--) {
+        let prev = new Date(task.doneHistory[i + 1].date);
+        prev.setDate(prev.getDate() - 1);
+        if (task.doneHistory[i].done && task.doneHistory[i].date === prev.toISOString().slice(0, 10)) {
+          streakCount++;
+        } else {
+          break;
+        }
+      }
+      bonusTarget = 7;
+      barColor = '#ffb300';
+    }
+
+    // 開始日時・繰り返し頻度・終了日時・獲得ポイント（4行縦並び）
     const info = document.createElement('div');
     info.className = 'task-list-info';
-    info.innerHTML =
-      `開始日時: ${task.date || '-'}<br>` +
-      `繰り返し頻度: ${getRepeatLabel(task)}<br>` +
-      `終了日時: ${task.endDate || '-'}`;
+    info.style.display = 'flex';
+    info.style.flexDirection = 'column';
+    info.style.alignItems = 'center';
+    info.style.justifyContent = 'center';
 
-    // ポイント
+    // 各行
+    const startSpan = document.createElement('span');
+    startSpan.textContent = `開始日時: ${task.date || '-'}`;
+    startSpan.style.textAlign = 'center';
+
+    const repeatSpan = document.createElement('span');
+    repeatSpan.textContent = `繰り返し頻度: ${getRepeatLabel(task)}`;
+    repeatSpan.style.textAlign = 'center';
+
+    const endSpan = document.createElement('span');
+    endSpan.textContent = `終了日時: ${task.endDate || '-'}`;
+    endSpan.style.textAlign = 'center';
+
     const pointSpan = document.createElement('span');
-    pointSpan.textContent = `${task.point}pt`;
+    pointSpan.textContent = `獲得ポイント: ${task.point}pt`;
+    pointSpan.className = 'task-point';
+    pointSpan.style.textAlign = 'center';
+
+    // ボーナスバーは「これからのタスク」以外のみ
+    if (bonusTarget > 0 && task.date <= todayStr) {
+      barWrapper = document.createElement('div');
+      barWrapper.style.width = '100%';
+      barWrapper.style.margin = '6px 0 0 0';
+      barWrapper.style.display = 'flex';
+      barWrapper.style.alignItems = 'center';
+      barWrapper.style.gap = '8px';
+      barWrapper.style.justifyContent = 'center';
+
+      const bar = document.createElement('div');
+      bar.style.flex = '1';
+      bar.style.height = '12px';
+      bar.style.background = '#eee';
+      bar.style.borderRadius = '6px';
+      bar.style.overflow = 'hidden';
+      bar.style.position = 'relative';
+      bar.style.maxWidth = '120px';
+
+      const fill = document.createElement('div');
+      fill.style.height = '100%';
+      fill.style.width = `${Math.min(streakCount, bonusTarget) / bonusTarget * 100}%`;
+      fill.style.background = barColor;
+      fill.style.borderRadius = '6px';
+      fill.style.transition = 'width 0.3s';
+
+      bar.appendChild(fill);
+
+      const barText = document.createElement('span');
+      barText.style.fontSize = '0.9em';
+      barText.style.marginLeft = '8px';
+      barText.style.color = '#666';
+      if (streakCount >= bonusTarget) {
+        barText.textContent = 'ボーナス達成！';
+        barText.style.color = '#d32f2f';
+      } else {
+        barText.textContent = `あと${bonusTarget - streakCount}日`;
+      }
+
+      barWrapper.append(bar, barText);
+    }
+
+    info.append(startSpan, repeatSpan, endSpan, pointSpan);
+    if (barWrapper) info.append(barWrapper);
 
     // 三点リーダーメニュー
     const menuButton = document.createElement('button');
@@ -693,8 +864,9 @@ function renderTaskList() {
     // 右側（ポイントと三点リーダー）を右端に固定
     const right = document.createElement('span');
     right.className = 'task-list-right';
-    right.append(pointSpan, menuButton, menu);
+    right.append(menuButton, menu);
 
+    // 並び順: タスク名 | 4行情報+バー | 三点リーダー
     li.append(left, info, right);
 
     // これからのタスク（明日以降開始）
