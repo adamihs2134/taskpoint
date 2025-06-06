@@ -16,6 +16,7 @@
     <div>ポイント: <span id="point-total">0</span></div>
     <div>贅沢ポイント: <span id="luxury-point">0</span></div>
     <button id="exchange-button">ポイント交換</button>
+    <button id="ticket-button">所持チケット</button>
   </div>
 </header>
 <main>
@@ -86,9 +87,11 @@
     <nav class="subtab-buttons">
       <button class="subtab active" data-subtab="point-history-list">ポイント履歴</button>
       <button class="subtab" data-subtab="item-history-list">アイテム履歴</button>
+      <button class="subtab" data-subtab="used-ticket-list">使用済みチケット</button>
     </nav>
     <ul id="point-history-list" class="history-list"></ul>
     <ul id="item-history-list" class="history-list" style="display:none;"></ul>
+    <ul id="used-ticket-list" class="history-list" style="display:none;"></ul>
   </section>
 
   <section id="tab-task-list" class="tab-content">
@@ -100,6 +103,11 @@
     <ul id="task-list-past"></ul>
   </section>
 </main>
+<div id="ticket-modal" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%); background:#fff; border-radius:12px; box-shadow:0 4px 24px rgba(0,0,0,0.2); padding:24px; z-index:2000;">
+  <h2>所持チケット</h2>
+  <ul id="ticket-list"></ul>
+  <button id="ticket-close-btn">閉じる</button>
+</div>
 <script src="script.js"></script>
 </body>
 </html>

@@ -21,8 +21,10 @@ header {
   justify-content: center;
   gap: 20px;
   font-weight: bold;
+  align-items: center; /* 追加: ボタンの高さを揃える */
 }
-#exchange-button {
+#exchange-button,
+#ticket-button {
   background: #e0e0e0;
   color: #222;
   border: none;
@@ -31,7 +33,10 @@ header {
   font-size: 16px;
   cursor: pointer;
 }
-#exchange-button:hover { background: #f1f1f1; }
+#exchange-button:hover,
+#ticket-button:hover {
+  background: #f1f1f1;
+}
 main { padding: 20px; }
 h1 { margin-top: 0; }
 .flex-form {
