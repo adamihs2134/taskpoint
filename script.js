@@ -924,7 +924,10 @@ function isTaskForToday(task, todayStr) {
   if (task.repeatType === 'everyday') return true;
   if (task.repeatType === 'weekday') {
     const day = new Date(todayStr).getDay();
-    return day >= 1 && day <= 5;
+    // 月〜金のみ
+    if (day < 1 || day > 5) return false;
+    // 週をまたいでも、開始日以降の平日ならOK
+    return new Date(todayStr) >= new Date(task.date);
   }
   if (task.repeatType === 'holiday') {
     const day = new Date(todayStr).getDay();
