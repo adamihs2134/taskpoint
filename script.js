@@ -921,23 +921,33 @@ init();
 
 function isTaskForToday(task, todayStr) {
   if (!task.repeat) return task.date === todayStr;
-  if (task.repeatType === 'everyday') return true;
+  if (task.repeatType === 'everyday') return new Date(todayStr) >= new Date(task.date);
   if (task.repeatType === 'weekday') {
-    const day = new Date(todayStr).getDay();
-    // 月〜金のみ
+    const today = new Date(todayStr);
+    const start = new Date(task.date);
+    const day = today.getDay();
+    // 月〜金のみ、開始日以降、かつ（終了日があれば終了日以前）
     if (day < 1 || day > 5) return false;
-    // 週をまたいでも、開始日以降の平日ならOK
-    return new Date(todayStr) >= new Date(task.date);
+    if (today < start) return false;
+    if (task.endDate && today > new Date(task.endDate)) return false;
+    return true;
   }
   if (task.repeatType === 'holiday') {
-    const day = new Date(todayStr).getDay();
-    return day === 0 || day === 6;
+    const today = new Date(todayStr);
+    const start = new Date(task.date);
+    const day = today.getDay();
+    if (day !== 0 && day !== 6) return false;
+    if (today < start) return false;
+    if (task.endDate && today > new Date(task.endDate)) return false;
+    return true;
   }
   if (task.repeatType === 'interval') {
     const start = new Date(task.date);
     const today = new Date(todayStr);
     const diff = Math.floor((today - start) / (1000 * 60 * 60 * 24));
-    return diff % task.repeatInterval === 0 && diff >= 0;
+    if (diff < 0) return false;
+    if (task.endDate && today > new Date(task.endDate)) return false;
+    return diff % task.repeatInterval === 0;
   }
   return task.date === todayStr;
 }
