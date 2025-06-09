@@ -1043,3 +1043,33 @@ function updateUsedTicketList() {
     usedList.appendChild(li);
   });
 }
+
+// --- streakCount計算部を修正 ---
+if (task.repeatType === 'weekday') {
+  // 週ごとにリセット。今週の月曜から今日までの連続記録のみカウント
+  const today = new Date(todayStr);
+  const weekDay = today.getDay();
+  // 月曜=1, 日曜=0
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - ((weekDay + 6) % 7)); // 今週の月曜
+  let streakBroken = false;
+  streakCount = 0;
+  for (let d = new Date(monday); d <= today; d.setDate(d.getDate() + 1)) {
+    const dStr = d.toISOString().slice(0, 10);
+    if (d.getDay() === 0 || d.getDay() === 6) continue; // 土日スキップ
+    const found = task.doneHistory && task.doneHistory.find(h => h.date === dStr && h.done);
+    if (found) {
+      streakCount++;
+    } else {
+      // 今日以降はカウントしない
+      if (dStr < todayStr) {
+        streakBroken = true;
+        break;
+      }
+    }
+  }
+  // 途切れていたら今週はバー非表示
+  if (streakBroken || streakCount === 0) streakCount = 0;
+  bonusTarget = 5;
+  barColor = '#42a5f5';
+}
