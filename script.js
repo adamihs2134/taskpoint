@@ -122,7 +122,6 @@ function updateTodayTasks() {
   });
   // 未完了→完了の順で表示
   [...undone, ...done].forEach(({task, idx}) => {
-    // ここは今までのli生成処理をそのまま
     const alreadyDoneToday = task.lastDoneDate === todayStr;
     const li = document.createElement('li');
     li.style.display = 'flex';
@@ -222,10 +221,10 @@ function updateTodayTasks() {
     // streakCountは「連続でチェックした日数」だけカウント
     if (task.repeatType === 'weekday' || task.repeatType === 'everyday') {
       // 直近から逆順で連続しているdone=trueの日付をカウント
+      let isBroken = false;
       for (let i = task.doneHistory.length - 1; i >= 0; i--) {
         const entry = task.doneHistory[i];
         if (!entry || !entry.done) break;
-        // 連続かどうか判定
         if (streakCount === 0) {
           streakCount = 1;
         } else {
@@ -234,10 +233,17 @@ function updateTodayTasks() {
           if (entry.date === prevDate.toISOString().slice(0, 10)) {
             streakCount++;
           } else {
+            // 連続していなかったらリセット
+            isBroken = true;
             break;
           }
         }
       }
+      // 連続していなかった場合はリセット
+      if (isBroken && task.doneHistory.length > 0) {
+        streakCount = 1;
+      }
+      if (task.doneHistory.length === 0) streakCount = 0;
       if (task.repeatType === 'weekday') {
         bonusTarget = 5;
         barColor = '#42a5f5';
@@ -295,6 +301,18 @@ function updateTodayTasks() {
     // チェック切替
     checkbox.addEventListener('change', () => {
       if (checkbox.checked && !task.doneToday && !alreadyDoneToday) {
+        // 連続性チェック
+        let resetStreak = false;
+        if (task.doneHistory && task.doneHistory.length > 0) {
+          const lastDate = new Date(task.doneHistory[task.doneHistory.length - 1].date);
+          lastDate.setDate(lastDate.getDate() + 1);
+          const todayStrCheck = (new Date()).toISOString().slice(0, 10);
+          if (lastDate.toISOString().slice(0, 10) !== todayStrCheck) {
+            // 連続していなければ履歴リセット
+            task.doneHistory = [];
+            resetStreak = true;
+          }
+        }
         task.doneToday = true;
         task.lastDoneDate = todayStr;
         if (!task.doneHistory) task.doneHistory = [];
@@ -302,7 +320,6 @@ function updateTodayTasks() {
 
         // ボーナス判定
         let streakCount = 0;
-        // 直近から逆順で連続しているdone=trueの日付をカウント
         for (let i = task.doneHistory.length - 1; i >= 0; i--) {
           const entry = task.doneHistory[i];
           if (!entry || !entry.done) break;
